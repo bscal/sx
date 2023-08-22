@@ -1,64 +1,49 @@
-project "sx"
-    kind "StaticLib"
-    language "C++"
-    cppdialect "C++11"
-    staticruntime "on"
-    
-    targetdir("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-    objdir("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+workspace "sx"
+    architecture "x64"
+    toolset "msc"
 
-    local SrcDir = "src/"
-    local IncludeDir = "include/"
-
-    files
+    configurations
     {
-        SrcDir .. "*.c",
-        IncludeDir .. "sx/*.h"
+        "Debug",
+        "Release"
     }
 
-    removefiles { "gfx.c", "app.c" }
+    startproject "sx"
 
-    includedirs
-    {
-        IncludeDir
-    }
+outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-    defines
-    {
-        "_ITERATOR_DEBUG_LEVEL=0",
-        "_HAS_EXCEPTIONS=0",
-        "_CRT_SECURE_NO_WARNINGS=0"
-        "_WINSOCK_DEPRECATED_NO_WARNINGS",
-    }
+include "premake_include.lua"
 
-    filter "toolset:clang"
-        buildoptions { "-std=C++11", "-fno-rtti", "-fno-exceptions" }
+filter {}
 
-    filter "toolset:msc"
-        buildoptions { "/EHsc", "/GR", "/GR-" }
+local directories = {
+    "./",
+}
 
-    filter "system:windows"
-        defines{ "_WIN32", "PLATFORM_DESKTOP"}
-        links { "winmm", "kernel32", "opengl32", "gdi32", "user32" }
+local function DeleteVSFiles(path)
+    os.remove(path .. "*.sln")
+    os.remove(path .. "*.vcxproj")
+    os.remove(path .. "*.vcxproj.filters")
+    os.remove(path .. "*.vcxproj.user")
+    print("Deleting VS files for " .. path)
+end
 
-    filter "system:linux"
-        defines { "PLATFORM_DESKTOP" }
-        links { "pthread", "GL", "m", "dl", "rt", "X11" }
+newaction
+{
+    trigger = "clean",
+    description = "Remove all binaries, int-binaries, vs files",
+    execute = function()
+        os.rmdir("./bin")
+        print("Successfully removed binaries")
+        os.rmdir("./bin-int")
+        print("Successfully removed intermediate binaries")
+        os.rmdir("./.vs")
 
-    filter {"system:macosx"}
-        disablewarnings {"deprecated-declarations"}
+        for _, v in pairs(directories) do
+            DeleteVSFiles(v)
+        end
 
-    filter "configurations:Debug"
-        defines { "DEBUG" }
-        symbols "On"
-        runtime "Debug"
-
-    filter "configurations:Release"
-        defines { "NDEBUG" }
-        optimize "On"
-        runtime "Release"
-
-    filter { "platforms:x64" }
-        architecture "x86_64"
-
-    filter {}
+        print("Successfully removed vs project files")
+        print("Done!")
+    end
+}
